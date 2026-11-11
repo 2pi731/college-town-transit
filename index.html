@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>CUMTD Bus Frequency</title>
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #F2EFE8;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+      background: #F2EFE8;
+    }
+
+    .legend {
+      background: rgba(242,239,232,0.95);
+      padding: 10px 12px;
+      border-radius: 4px;
+      color: #333;
+      line-height: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+
+    .legend-line {
+      display: inline-block;
+      width: 28px;
+      margin-right: 7px;
+      vertical-align: middle;
+      border-top-style: solid;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+const map = L.map('map', {
+  zoomControl: true
+}).setView([40.107, -88.227], 14);
+
+
+/* LIGHT BASEMAP */
+
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    maxZoom: 19,
+    opacity: 0.22,
+    attribution: '&copy; OpenStreetMap contributors'
+  }
+).addTo(map);
+
+
+/* UIUC BUILDINGS */
+
+fetch('uiuc_buildings.geojson')
+  .then(response => response.json())
+  .then(data => {
+
+    L.geoJSON(data, {
+      style: {
+        stroke: false,
+        fillColor: '#827D73',
+        fillOpacity: 0.60
+      }
+    }).addTo(map);
+
+  });
+
+
+/* CUMTD FREQUENCY */
+
+function transitStyle(feature) {
+
+  const f = Number(feature.properties.buses_per_hour);
+
+  if (f >= 8) {
+    return {
+      color: '#D9583B',
+      weight: 5,
+      opacity: 0.95
+    };
+  }
+
+  if (f >= 4) {
+    return {
+      color: '#243D7A',
+      weight: 4,
+      opacity: 0.90
+    };
+  }
+
+  return {
+    color: '#8FA2BF',
+    weight: 2,
+    opacity: 0.65
+  };
+}
+
+
+fetch('cumtd_frequency.geojson')
+  .then(response => response.json())
+  .then(data => {
+
+    L.geoJSON(data, {
+
+      style: transitStyle,
+
+      onEachFeature: function(feature, layer) {
+
+        const p = feature.properties;
+
+        const frequency =
+          Number(p.buses_per_hour).toFixed(1);
+
+        let text =
+          '<strong>' +
+          frequency +
+          ' scheduled buses/hour</strong>';
+
+        if (p.route_names) {
+          text +=
+            '<br>' +
+            p.route_names;
+        }
+
+        layer.bindTooltip(text);
+
+      }
+
+    }).addTo(map);
+
+  });
+
+
+/* SIMPLE LABELS */
+
+function addLabel(lat, lon, text) {
+
+  L.marker([lat, lon], {
+
+    interactive: false,
+
+    icon: L.divIcon({
+      className: '',
+      html:
+        '<div style="' +
+        'font-size:12px;' +
+        'font-weight:600;' +
+        'color:#444;' +
+        'white-space:nowrap;' +
+        'text-shadow:' +
+        '-1px -1px 0 #F2EFE8,' +
+        '1px -1px 0 #F2EFE8,' +
+        '-1px 1px 0 #F2EFE8,' +
+        '1px 1px 0 #F2EFE8;' +
+        '">' +
+        text +
+        '</div>'
+    })
+
+  }).addTo(map);
+
+}
+
+addLabel(
+  40.1164,
+  -88.2434,
+  'DOWNTOWN CHAMPAIGN'
+);
+
+addLabel(
+  40.1106,
+  -88.2073,
+  'DOWNTOWN URBANA'
+);
+
+addLabel(
+  40.1023,
+  -88.2272,
+  'UNIVERSITY OF ILLINOIS'
+);
+
+
+/* LEGEND */
+
+const legend = L.control({
+  position: 'bottomright'
+});
+
+legend.onAdd = function() {
+
+  const div =
+    L.DomUtil.create('div', 'legend');
+
+  div.innerHTML =
+    '<strong>Scheduled buses per hour</strong><br>' +
+    '<span style="font-size:11px">Weekday, 7 a.m.–7 p.m.</span>' +
+    '<br><br>' +
+
+    '<span class="legend-line" ' +
+    'style="border-width:5px;' +
+    'border-color:#D9583B"></span>8+<br>' +
+
+    '<span class="legend-line" ' +
+    'style="border-width:4px;' +
+    'border-color:#243D7A"></span>4–8<br>' +
+
+    '<span class="legend-line" ' +
+    'style="border-width:2px;' +
+    'border-color:#8FA2BF"></span>&lt;4<br>' +
+
+    '<br>' +
+    '<span style="' +
+    'display:inline-block;' +
+    'width:13px;' +
+    'height:13px;' +
+    'background:#827D73;' +
+    'margin-right:8px;' +
+    '"></span>' +
+    'UIUC building';
+
+  return div;
+
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+</html>
